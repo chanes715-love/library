@@ -10,8 +10,8 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700;900&display=swap');
         
         body { 
-            /* 淺灰藍色背景，帶有日式和紙的柔和感 */
-            background-color: #F0F4F8; 
+            /* 淺綠色背景，符合書架主題 */
+            background-color: #d1e7c5; 
             font-family: 'Noto Sans TC', sans-serif; 
         }
         
@@ -105,19 +105,25 @@
     </div>
 
     <!-- ================= 使用者借閱介面 ================= -->
-    <div id="userSection" class="hidden flex-grow p-6 max-w-7xl mx-auto w-full">
-        <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-300 pb-4">
-            <div>
-                <h2 class="text-3xl font-bold text-indigo-950 title-font tracking-wide">書箱藏書一覽</h2>
-                <p class="text-slate-600 mt-2 font-medium">點擊「借閱」即可借出書箱，閱讀完畢後請點擊「歸還」。</p>
-            </div>
-            <div class="text-sm font-bold text-indigo-800 bg-indigo-100/80 border border-indigo-200 px-4 py-2 rounded-md shadow-sm">
-                即時同步中...
+    <div id="userSection" class="hidden flex-grow p-4 md:p-8 max-w-[1400px] mx-auto w-full">
+        
+        <!-- 搜尋列區塊 -->
+        <div class="flex justify-center mb-10 mt-4">
+            <div class="flex w-full max-w-3xl shadow-lg rounded-full overflow-hidden bg-white border border-white focus-within:ring-4 focus-within:ring-[#e5a044]/30 transition-all">
+                <div class="flex items-center pl-5 pr-2 bg-white text-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="searchInput" placeholder="輸入書箱登錄號 或 關鍵字..." class="w-full py-4 px-3 outline-none text-lg text-slate-700 font-bold placeholder-slate-400">
+                <button id="btnSearch" class="bg-[#e5a044] hover:bg-[#d48f33] text-white font-bold text-lg px-8 py-4 transition-colors tracking-widest">SEARCH</button>
             </div>
         </div>
 
-        <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <!-- 書箱卡片會透過 JS 動態產生於此 -->
+        <!-- 書架與書箱網格 -->
+        <div class="relative">
+            <!-- 書箱網格：設定底部有木質書架的視覺效果 -->
+            <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-4 border-b-[16px] border-[#6b4226]">
+                <!-- 書箱卡片會透過 JS 動態產生於此 -->
+            </div>
         </div>
     </div>
 
@@ -273,7 +279,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                   const firebaseConfig = {
+                 const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -293,6 +299,7 @@
         let currentStudent = null; 
         let unsubscribeBooks = null;
         let globalMaxBorrowLimit = 1; 
+        let globalBooksData = []; // 儲存書箱資料供搜尋過濾使用
 
         // 載入系統設定
         async function loadSystemSettings() {
@@ -545,70 +552,109 @@
         // 書箱即時借閱系統邏輯 (學生端)
         // ==========================================
         
+        // 綁定搜尋事件
+        document.getElementById('searchInput')?.addEventListener('input', renderBooksUI);
+        document.getElementById('btnSearch')?.addEventListener('click', renderBooksUI);
+
         function initRealtimeBooks() {
             const grid = document.getElementById('booksGrid');
-            grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400 font-bold tracking-widest animate-pulse">典藏目錄載入中...</div>';
+            grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 font-bold tracking-widest animate-pulse">典藏目錄載入中...</div>';
 
             const booksQuery = query(collection(db, "books"));
             
             unsubscribeBooks = onSnapshot(booksQuery, (snapshot) => {
-                grid.innerHTML = ''; 
-                
-                if(snapshot.empty) {
-                    grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 bg-white/50 rounded-xl border border-slate-200 shadow-sm title-font">目前館藏中尚無書箱紀錄。</div>';
-                    return;
+                globalBooksData = [];
+                if(!snapshot.empty) {
+                    snapshot.forEach(doc => globalBooksData.push({ id: doc.id, ...doc.data() }));
+                    globalBooksData.sort((a, b) => a.id.localeCompare(b.id));
                 }
-
-                const booksData = [];
-                snapshot.forEach(doc => booksData.push({ id: doc.id, ...doc.data() }));
-                booksData.sort((a, b) => a.id.localeCompare(b.id));
-
-                booksData.forEach(book => {
-                    const status = book.status || 'available';
-                    const isAvailable = status === 'available';
-                    const isMyBorrow = status === 'borrowed' && book.borrowerId === currentStudent?.id;
-                    
-                    let borderColor, bgColor, statusText, actionHtml, titleColor;
-
-                    if (isAvailable) {
-                        borderColor = "border-teal-600";
-                        bgColor = "bg-white";
-                        titleColor = "text-teal-900";
-                        statusText = `<span class="text-teal-800 font-bold bg-teal-50 border border-teal-100 px-3 py-1 rounded-md text-xs tracking-widest">可借閱</span>`;
-                        actionHtml = `<button onclick="window.borrowBook('${book.id}')" class="w-full mt-4 bg-teal-700 hover:bg-teal-800 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors tracking-widest">借閱此書箱</button>`;
-                    } else if (isMyBorrow) {
-                        borderColor = "border-rose-700";
-                        bgColor = "bg-rose-50/50";
-                        titleColor = "text-rose-900";
-                        statusText = `<span class="text-rose-800 font-bold bg-rose-100 border border-rose-200 px-3 py-1 rounded-md text-xs tracking-widest">已借閱</span>`;
-                        actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full mt-4 bg-rose-700 hover:bg-rose-800 text-white font-bold py-2.5 rounded-lg shadow-sm transition-colors tracking-widest">歸還書箱</button>`;
-                    } else {
-                        borderColor = "border-slate-300";
-                        bgColor = "bg-slate-100/70 opacity-90";
-                        titleColor = "text-slate-600";
-                        const borrowerName = book.borrowerName || '其他讀者';
-                        statusText = `<span class="text-slate-500 font-bold bg-slate-200 border border-slate-300 px-3 py-1 rounded-md text-xs tracking-widest">已出借</span>`;
-                        actionHtml = `<div class="w-full mt-4 text-center text-sm text-slate-500 font-bold py-2.5 bg-slate-200 rounded-lg tracking-wide border border-slate-300">目前由 ${borrowerName} 借閱</div>`;
-                    }
-
-                    const card = document.createElement('div');
-                    card.className = `p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 ${borderColor} ${bgColor} flex flex-col justify-between transition-all hover:shadow-md`;
-                    card.innerHTML = `
-                        <div>
-                            <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-lg font-bold text-slate-800 font-mono">${book.id}</h3>
-                                ${statusText}
-                            </div>
-                            <h4 class="text-xl font-bold ${titleColor} mb-3 truncate title-font" title="${book.name || '無名書箱'}">${book.name || '無名書箱'}</h4>
-                            <p class="text-sm text-slate-500 h-10 overflow-hidden line-clamp-2 leading-relaxed font-medium">${book.note || '館藏說明建置中...'}</p>
-                        </div>
-                        ${actionHtml}
-                    `;
-                    grid.appendChild(card);
-                });
-
+                renderBooksUI();
             }, (error) => {
                 grid.innerHTML = '<div class="col-span-full text-center py-10 text-rose-600 font-bold bg-white rounded-lg border border-rose-200">連線中斷，請重新整理頁面。</div>';
+            });
+        }
+
+        function renderBooksUI() {
+            const grid = document.getElementById('booksGrid');
+            const searchInput = document.getElementById('searchInput');
+            const searchKeyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+            if(globalBooksData.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 bg-white/60 rounded-xl shadow-sm font-bold title-font text-lg">目前館藏中尚無書箱紀錄。</div>';
+                return;
+            }
+
+            // 根據關鍵字過濾
+            const filteredBooks = globalBooksData.filter(b => 
+                (b.id && b.id.toLowerCase().includes(searchKeyword)) || 
+                (b.name && b.name.toLowerCase().includes(searchKeyword))
+            );
+
+            if(filteredBooks.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500 bg-white/60 rounded-xl shadow-sm font-bold title-font text-lg">找不到符合條件的書箱，請嘗試其他關鍵字。</div>';
+                return;
+            }
+
+            grid.innerHTML = ''; 
+
+            // 定義多彩主題 (紅, 橘黃, 綠, 藍綠, 紫)
+            const themes = [
+                { bg: 'bg-[#cf514d]', text: 'text-[#cf514d]', border: 'border-[#cf514d]' },
+                { bg: 'bg-[#e5a044]', text: 'text-[#e5a044]', border: 'border-[#e5a044]' },
+                { bg: 'bg-[#8ab07d]', text: 'text-[#8ab07d]', border: 'border-[#8ab07d]' },
+                { bg: 'bg-[#519490]', text: 'text-[#519490]', border: 'border-[#519490]' },
+                { bg: 'bg-[#8d6a9f]', text: 'text-[#8d6a9f]', border: 'border-[#8d6a9f]' }
+            ];
+
+            filteredBooks.forEach((book, index) => {
+                const theme = themes[index % themes.length];
+                const status = book.status || 'available';
+                const isAvailable = status === 'available';
+                const isMyBorrow = status === 'borrowed' && book.borrowerId === currentStudent?.id;
+                
+                // 外部連結按鈕邏輯
+                const descLinkObj = book.descLink 
+                    ? `<a href="${book.descLink}" target="_blank" class="block w-full text-center ${theme.bg} hover:opacity-85 text-white font-bold py-2.5 rounded transition-opacity mt-auto mb-2 text-sm shadow-sm tracking-widest cursor-pointer">查看書箱描述</a>` 
+                    : `<div class="block w-full text-center bg-slate-200 text-slate-400 font-bold py-2.5 rounded mt-auto mb-2 text-sm cursor-not-allowed tracking-widest">無說明連結</div>`;
+
+                // 借閱/歸還 按鈕邏輯
+                let actionHtml, statusBadge;
+                if (isAvailable) {
+                    statusBadge = ''; 
+                    actionHtml = `<button onclick="window.borrowBook('${book.id}')" class="w-full bg-white border-2 ${theme.border} ${theme.text} hover:${theme.bg} hover:text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest">借閱此書箱</button>`;
+                } else if (isMyBorrow) {
+                    statusBadge = `<span class="absolute top-3 right-3 bg-rose-600 text-white text-xs px-2.5 py-1 rounded shadow-sm animate-pulse font-bold tracking-widest z-10">已借出(您)</span>`;
+                    actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest border-2 border-rose-600">歸還書箱</button>`;
+                } else {
+                    const borrowerName = book.borrowerName || '其他讀者';
+                    statusBadge = `<span class="absolute top-3 right-3 bg-slate-600 text-white text-xs px-2.5 py-1 rounded shadow-sm font-bold tracking-widest z-10">已外借</span>`;
+                    actionHtml = `<div class="w-full text-center text-xs text-slate-500 font-bold py-2.5 bg-slate-100 rounded tracking-wide border border-slate-200">由 ${borrowerName} 借閱中</div>`;
+                }
+
+                const noteContent = book.note ? book.note : '暫無特別說明。';
+
+                // 建立卡片元素
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-lg flex flex-col relative shadow-md overflow-hidden transform hover:-translate-y-1 hover:shadow-xl transition-all duration-300`;
+                
+                card.innerHTML = `
+                    <div class="h-4 w-full ${theme.bg}"></div>
+                    ${statusBadge}
+                    <div class="p-5 flex-grow flex flex-col h-full relative">
+                        <span class="${theme.bg} text-white font-bold px-3 py-1 rounded w-max text-sm mb-4 shadow-sm tracking-wider font-mono">${book.id}</span>
+                        
+                        <h3 class="text-2xl font-bold mb-4 text-slate-800 title-font leading-snug break-words" title="${book.name || '無名書箱'}">${book.name || '無名書箱'}</h3>
+                        
+                        <div class="bg-[#fffdf8] border border-amber-100/60 p-3 rounded mb-5 flex-grow min-h-[80px]">
+                            <span class="text-xs font-bold text-amber-800/60 block mb-1 tracking-widest">說明：</span>
+                            <p class="text-sm text-slate-700 leading-relaxed">${noteContent}</p>
+                        </div>
+                        
+                        ${descLinkObj}
+                        ${actionHtml}
+                    </div>
+                `;
+                grid.appendChild(card);
             });
         }
 
