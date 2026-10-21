@@ -103,46 +103,83 @@
 
     <!-- ================= 管理員後台介面 ================= -->
     <div id="adminSection" class="hidden flex-grow p-6 max-w-7xl mx-auto w-full space-y-6">
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
-            <h2 class="text-xl font-bold mb-2 text-blue-800">大量匯入使用者 (Excel)</h2>
-            <p class="text-sm text-gray-600 mb-4">請上傳包含使用者的 Excel 檔案。欄位必須包含：<strong>學號</strong>、<strong>姓名</strong>、<strong>班級</strong>。</p>
-            
-            <div class="flex flex-col sm:flex-row gap-4 items-center bg-blue-50 p-4 rounded-lg">
-                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full sm:w-auto text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all cursor-pointer"/>
-                <button id="btnImportUsers" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md shadow transition-colors flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    開始匯入
-                </button>
-            </div>
-            
-            <!-- 匯入進度與結果 -->
-            <div id="importStats" class="mt-4 hidden p-4 rounded-lg bg-gray-50 border border-gray-200">
-                <h3 class="font-bold text-gray-700 mb-2">匯入狀態</h3>
-                <p id="importMessage" class="text-sm text-gray-600"></p>
-                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                    <div id="importProgressBar" class="bg-blue-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 左側：功能操作區 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 大量匯入區塊 -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+                    <h2 class="text-xl font-bold mb-2 text-blue-800">批次匯入使用者 (Excel)</h2>
+                    <p class="text-sm text-gray-600 mb-4">請上傳包含使用者的 Excel 檔案。欄位必須包含：<strong>姓名</strong>、<strong>密碼</strong>。</p>
+                    
+                    <div class="flex flex-col gap-3 items-center bg-blue-50 p-4 rounded-lg">
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all cursor-pointer"/>
+                        <button id="btnImportUsers" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md shadow transition-colors flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            開始匯入
+                        </button>
+                    </div>
+                    
+                    <!-- 匯入進度與結果 -->
+                    <div id="importStats" class="mt-4 hidden p-4 rounded-lg bg-gray-50 border border-gray-200">
+                        <h3 class="font-bold text-gray-700 mb-2">匯入狀態</h3>
+                        <p id="importMessage" class="text-sm text-gray-600"></p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                            <div id="importProgressBar" class="bg-blue-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 單筆新增/修改表單 -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-amber-500">
+                    <h2 id="userFormTitle" class="text-xl font-bold mb-4 text-amber-800">單筆新增使用者</h2>
+                    <form id="userForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">姓名 (登入帳號)</label>
+                            <input type="text" id="userNameInput" required placeholder="例如: B103_王O雀" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-amber-500 focus:border-amber-500">
+                            <p class="text-xs text-gray-500 mt-1">* 姓名將作為登入時的唯一識別</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">密碼</label>
+                            <input type="text" id="userPwdInput" required placeholder="請輸入密碼" class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-amber-500 focus:border-amber-500">
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" id="btnSaveUser" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors shadow">儲存資料</button>
+                            <button type="button" id="btnCancelEditUser" class="hidden flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors shadow">取消修改</button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </div>
 
-        <!-- 已註冊使用者列表 (簡易預覽) -->
-        <div class="bg-white p-6 rounded-xl shadow-md">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">目前系統使用者清單</h2>
-                <button id="btnRefreshUsers" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded font-bold transition-colors">重新整理</button>
-            </div>
-            <div class="overflow-y-auto max-h-96 border border-gray-200 rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">姓名</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">密碼</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
-                        <!-- 動態產生使用者列表 -->
-                    </tbody>
-                </table>
+            <!-- 右側：資料列表區 -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md flex flex-col h-[700px] lg:h-auto">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                    <h2 class="text-xl font-bold text-gray-800">系統使用者清單 (<span id="totalUsersCount">0</span>)</h2>
+                    <div class="flex items-center gap-3">
+                        <button id="btnBatchDeleteUsers" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-bold shadow transition-colors flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            批次刪除 (<span id="selectedUsersCount">0</span>)
+                        </button>
+                        <button id="btnRefreshUsers" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded font-bold transition-colors shadow-sm">重新整理</button>
+                    </div>
+                </div>
+                <div class="overflow-y-auto flex-grow border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 relative">
+                        <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 text-left w-12">
+                                    <input type="checkbox" id="selectAllUsers" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">姓名 (帳號)</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">密碼</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- 動態產生使用者列表 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -150,16 +187,28 @@
     <!-- 吐司通知容器 -->
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- 系統自訂確認對話框 -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 transition-opacity">
+        <div class="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 transform transition-all">
+            <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirmTitle">確認操作</h3>
+            <p class="text-sm text-gray-600 mb-6" id="confirmMessage">您確定要執行此操作嗎？</p>
+            <div class="flex justify-end gap-3">
+                <button id="btnConfirmCancel" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-bold transition-colors">取消</button>
+                <button id="btnConfirmOk" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors shadow">確定執行</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 腳本區域 (Firebase & 應用程式邏輯) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, writeBatch, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         // ==========================================
-        // Firebase 設置 (請替換為您的實際配置)
+        // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                const firebaseConfig = {
+                  const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -169,15 +218,17 @@
 };
 
 
-        // 為確保在預覽環境也能執行，如果有全域設定則覆蓋
-        const finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
-
-        const app = initializeApp(finalConfig);
+        // 初始化 Firebase 與各項服務
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // 將 auth 與 db 綁定到 window 物件，確保稍後定義的全域函數可以使用
+        window.auth = auth;
+        window.db = db;
+
         // ==========================================
-        // 全域狀態與自訂通知系統 (Toast)
+        // 全域狀態與自訂通知系統 (Toast & Confirm)
         // ==========================================
         let currentStudent = null; // 儲存當前登入的學生資料
         let unsubscribeBooks = null;
@@ -198,6 +249,28 @@
                 toast.classList.replace('toast-enter-active', 'toast-exit-active');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        function showConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            modal.classList.remove('hidden');
+
+            const btnOk = document.getElementById('btnConfirmOk');
+            const btnCancel = document.getElementById('btnConfirmCancel');
+
+            // 重新複製按鈕以移除舊的事件監聽器，避免重複觸發
+            const newBtnOk = btnOk.cloneNode(true);
+            const newBtnCancel = btnCancel.cloneNode(true);
+            btnOk.replaceWith(newBtnOk);
+            btnCancel.replaceWith(newBtnCancel);
+
+            newBtnCancel.addEventListener('click', () => modal.classList.add('hidden'));
+            newBtnOk.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                onConfirm();
+            });
         }
 
         // ==========================================
@@ -571,41 +644,206 @@
             reader.readAsArrayBuffer(fileInput.files[0]);
         });
 
-        // 載入使用者清單 (Admin 專用)
+        // ==========================================
+        // 管理員：使用者名單 CRUD 邏輯
+        // ==========================================
+        
+        let globalUsers = [];
+        let isEditingUser = false;
+
+        // 1. 載入使用者清單 (Admin 專用)
         async function loadAdminUsersList() {
             const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500 font-bold animate-pulse">資料載入中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 font-bold animate-pulse">資料載入中...</td></tr>';
+            
+            // 重置全選狀態
+            document.getElementById('selectAllUsers').checked = false;
+            updateBatchDeleteBtn();
             
             try {
                 const querySnapshot = await getDocs(collection(db, "students"));
-                const users = [];
-                querySnapshot.forEach(doc => users.push(doc.data()));
+                globalUsers = [];
+                querySnapshot.forEach(doc => globalUsers.push({ id: doc.id, ...doc.data() }));
                 
                 // 簡單排序：照姓名
-                users.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                globalUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                 
-                if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500">目前沒有任何使用者資料，請使用上方功能匯入。</td></tr>';
+                document.getElementById('totalUsersCount').textContent = globalUsers.length;
+
+                if (globalUsers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">目前沒有任何使用者資料，請使用上方功能匯入或手動新增。</td></tr>';
                     return;
                 }
 
                 tbody.innerHTML = '';
-                users.forEach(user => {
+                globalUsers.forEach(user => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50 transition-colors";
                     tr.innerHTML = `
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <input type="checkbox" class="user-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" value="${user.id}">
+                        </td>
                         <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${user.name}</td>
                         <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${user.password || '無密碼'}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-bold">
+                            <button class="text-amber-600 hover:text-amber-900 mr-3 edit-user-btn transition-colors" data-id="${user.id}">修改</button>
+                            <button class="text-red-600 hover:text-red-900 delete-user-btn transition-colors" data-id="${user.id}">刪除</button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
+
+                // 綁定編輯與刪除按鈕
+                document.querySelectorAll('.edit-user-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => editUser(e.target.dataset.id));
+                });
+                document.querySelectorAll('.delete-user-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => deleteSingleUser(e.target.dataset.id));
+                });
+                
+                // 綁定 Checkbox 事件
+                const checkboxes = document.querySelectorAll('.user-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', updateBatchDeleteBtn);
+                });
+
             } catch(e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-red-500 font-bold">讀取失敗，請檢查資料庫權限</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 font-bold">讀取失敗，請檢查資料庫權限</td></tr>';
             }
         }
 
         document.getElementById('btnRefreshUsers').addEventListener('click', loadAdminUsersList);
+
+        // 2. 使用者表單 (新增/修改) 邏輯
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSaveUser');
+            btn.disabled = true;
+            btn.textContent = "儲存中...";
+
+            const name = document.getElementById('userNameInput').value.trim();
+            const password = document.getElementById('userPwdInput').value.trim();
+            
+            const studentData = {
+                id: name, // 將姓名作為 ID
+                name: name,
+                password: password,
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                await setDoc(doc(db, "students", studentData.id), studentData);
+                showToast(isEditingUser ? '修改使用者成功！' : '新增使用者成功！', 'success');
+                resetUserForm();
+                loadAdminUsersList();
+                loadStudentNames(); // 更新前台登入選單
+            } catch (error) {
+                console.error(error);
+                showToast('儲存失敗，請檢查網路。', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "儲存資料";
+            }
+        });
+
+        function editUser(id) {
+            const user = globalUsers.find(u => u.id === id);
+            if(user) {
+                document.getElementById('userNameInput').value = user.name;
+                document.getElementById('userNameInput').readOnly = true; // 修改時不允許改帳號名(ID)
+                document.getElementById('userNameInput').classList.add('bg-gray-100', 'text-gray-500');
+                document.getElementById('userPwdInput').value = user.password;
+                
+                document.getElementById('userFormTitle').innerHTML = `修改使用者: <span class="text-amber-600">${user.name}</span>`;
+                document.getElementById('btnCancelEditUser').classList.remove('hidden');
+                isEditingUser = true;
+                // 視窗滾動到表單
+                document.getElementById('userFormTitle').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function resetUserForm() {
+            document.getElementById('userForm').reset();
+            document.getElementById('userNameInput').readOnly = false;
+            document.getElementById('userNameInput').classList.remove('bg-gray-100', 'text-gray-500');
+            document.getElementById('userFormTitle').textContent = "單筆新增使用者";
+            document.getElementById('btnCancelEditUser').classList.add('hidden');
+            isEditingUser = false;
+        }
+        document.getElementById('btnCancelEditUser').addEventListener('click', resetUserForm);
+
+        // 3. 單筆刪除邏輯
+        function deleteSingleUser(id) {
+            showConfirm('刪除使用者', `確定要刪除使用者「${id}」嗎？此操作無法復原。`, async () => {
+                try {
+                    await deleteDoc(doc(db, "students", id));
+                    showToast(`已刪除使用者: ${id}`, 'success');
+                    loadAdminUsersList();
+                    loadStudentNames();
+                } catch(e) {
+                    console.error(e);
+                    showToast('刪除失敗，權限不足或網路異常。', 'error');
+                }
+            });
+        }
+
+        // 4. 批次刪除邏輯
+        const selectAllUsersCb = document.getElementById('selectAllUsers');
+        const btnBatchDeleteUsers = document.getElementById('btnBatchDeleteUsers');
+        const selectedUsersCountSpan = document.getElementById('selectedUsersCount');
+
+        selectAllUsersCb.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.user-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateBatchDeleteBtn();
+        });
+
+        function updateBatchDeleteBtn() {
+            const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+            const count = checkedBoxes.length;
+            selectedUsersCountSpan.textContent = count;
+            
+            if (count > 0) {
+                btnBatchDeleteUsers.classList.remove('hidden');
+            } else {
+                btnBatchDeleteUsers.classList.add('hidden');
+            }
+            
+            const totalBoxes = document.querySelectorAll('.user-checkbox').length;
+            selectAllUsersCb.checked = (count === totalBoxes && totalBoxes > 0);
+        }
+
+        btnBatchDeleteUsers.addEventListener('click', () => {
+            const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+            const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+            
+            showConfirm('批次刪除使用者', `⚠️ 警告：即將刪除 ${idsToDelete.length} 位使用者！此操作無法復原，確定繼續？`, async () => {
+                btnBatchDeleteUsers.disabled = true;
+                btnBatchDeleteUsers.textContent = "刪除中...";
+                
+                try {
+                    const batch = writeBatch(db);
+                    idsToDelete.forEach(id => {
+                        const docRef = doc(db, "students", id);
+                        batch.delete(docRef);
+                    });
+                    
+                    await batch.commit();
+                    showToast(`成功刪除 ${idsToDelete.length} 筆資料！`, 'success');
+                    loadAdminUsersList();
+                    loadStudentNames();
+                } catch (error) {
+                    console.error(error);
+                    showToast("批次刪除失敗", "error");
+                } finally {
+                    btnBatchDeleteUsers.disabled = false;
+                    btnBatchDeleteUsers.innerHTML = `<svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> 批次刪除 (<span id="selectedUsersCount">0</span>)`;
+                }
+            });
+        });
 
         // 頁面載入時初始化狀態
         updateUIVisibility();
