@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長安國小書箱 - 借閱系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { 
+            background-color: #F4F9F2; 
+            font-family: 'Noto Sans TC', sans-serif; 
+        }
+        .toast-enter { transform: translateY(100%); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+        .toast-exit { transform: translateY(0); opacity: 1; }
+        .toast-exit-active { transform: translateY(100%); opacity: 0; transition: all 0.3s ease-in; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 flex flex-col">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-green-700 text-white p-4 shadow-md flex justify-between items-center z-10 relative">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+            📚 長安國小書箱借閱系統
+        </h1>
+        <div id="userInfo" class="hidden flex items-center gap-4">
+            <span id="displayUserName" class="text-sm font-medium bg-green-800 px-3 py-1 rounded-full"></span>
+            <button id="btnLogout" class="text-sm bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-bold shadow transition-colors">登出</button>
+        </div>
+    </header>
+
+    <!-- ================= 登入介面 ================= -->
+    <div id="loginSection" class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-green-600">
+            
+            <!-- 頁籤 -->
+            <div class="flex mb-6 border-b-2 border-gray-100">
+                <button id="tabStudent" class="flex-1 py-3 text-center font-bold text-green-700 border-b-4 border-green-600 transition-colors">使用者/學生登入</button>
+                <button id="tabAdmin" class="flex-1 py-3 text-center font-bold text-gray-400 border-b-4 border-transparent hover:text-green-600 transition-colors">管理員登入</button>
+            </div>
+
+            <!-- 學生登入表單 -->
+            <form id="studentLoginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">學號 / 使用者編號</label>
+                    <input type="text" id="studentIdInput" required placeholder="請輸入學號" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all">
+                </div>
+                <button type="submit" id="btnStudentLogin" class="w-full py-3 px-4 rounded-lg shadow-sm text-md font-bold text-white bg-green-600 hover:bg-green-700 transition-all flex justify-center items-center gap-2">
+                    進入借閱系統
+                </button>
+                <p class="text-xs text-gray-500 text-center mt-4">請使用管理者匯入的學號進行登入</p>
+            </form>
+
+            <!-- 管理員登入表單 -->
+            <form id="adminLoginForm" class="space-y-5 hidden">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">管理員信箱</label>
+                    <input type="email" id="adminEmailInput" required placeholder="admin@example.com" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">密碼</label>
+                    <input type="password" id="adminPasswordInput" required placeholder="••••••••" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all">
+                </div>
+                <button type="submit" id="btnAdminLogin" class="w-full py-3 px-4 rounded-lg shadow-sm text-md font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all">
+                    登入管理後台
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= 使用者借閱介面 ================= -->
+    <div id="userSection" class="hidden flex-grow p-6 max-w-7xl mx-auto w-full">
+        <div class="mb-8 flex justify-between items-end">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">可借閱書箱一覽</h2>
+                <p class="text-gray-600 mt-1">點擊「借閱」來借出書箱，閱讀完畢後請點擊「歸還」。</p>
+            </div>
+            <div class="text-sm font-bold text-green-700 bg-green-100 px-4 py-2 rounded-lg">
+                系統即時同步中...
+            </div>
+        </div>
+
+        <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- 書箱卡片會透過 JS 動態產生於此 -->
+        </div>
+    </div>
+
+    <!-- ================= 管理員後台介面 ================= -->
+    <div id="adminSection" class="hidden flex-grow p-6 max-w-7xl mx-auto w-full space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+            <h2 class="text-xl font-bold mb-2 text-blue-800">大量匯入使用者 (Excel)</h2>
+            <p class="text-sm text-gray-600 mb-4">請上傳包含使用者的 Excel 檔案。欄位必須包含：<strong>學號</strong>、<strong>姓名</strong>、<strong>班級</strong>。</p>
+            
+            <div class="flex flex-col sm:flex-row gap-4 items-center bg-blue-50 p-4 rounded-lg">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full sm:w-auto text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all cursor-pointer"/>
+                <button id="btnImportUsers" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-md shadow transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    開始匯入
+                </button>
+            </div>
+            
+            <!-- 匯入進度與結果 -->
+            <div id="importStats" class="mt-4 hidden p-4 rounded-lg bg-gray-50 border border-gray-200">
+                <h3 class="font-bold text-gray-700 mb-2">匯入狀態</h3>
+                <p id="importMessage" class="text-sm text-gray-600"></p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                    <div id="importProgressBar" class="bg-blue-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 已註冊使用者列表 (簡易預覽) -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">目前系統使用者清單</h2>
+                <button id="btnRefreshUsers" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded font-bold transition-colors">重新整理</button>
+            </div>
+            <div class="overflow-y-auto max-h-96 border border-gray-200 rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">學號</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">姓名</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">班級</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- 動態產生使用者列表 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 吐司通知容器 -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 腳本區域 (Firebase & 應用程式邏輯) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ==========================================
+        // Firebase 設置 (請替換為您的實際配置)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // 為確保在預覽環境也能執行，如果有全域設定則覆蓋
+        const finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+
+        const app = initializeApp(finalConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ==========================================
+        // 全域狀態與自訂通知系統 (Toast)
+        // ==========================================
+        let currentStudent = null; // 儲存當前登入的學生資料
+        let unsubscribeBooks = null;
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-600' : 'bg-blue-600');
+            const icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+
+            toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg font-bold flex items-center gap-3 toast-enter-active`;
+            toast.innerHTML = `<span class="bg-white/20 rounded-full w-6 h-6 flex items-center justify-center text-sm">${icon}</span> ${message}`;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.replace('toast-enter-active', 'toast-exit-active');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==========================================
+        // UI 切換邏輯
+        // ==========================================
+        const tabStudent = document.getElementById('tabStudent');
+        const tabAdmin = document.getElementById('tabAdmin');
+        const studentForm = document.getElementById('studentLoginForm');
+        const adminForm = document.getElementById('adminLoginForm');
+
+        tabStudent.addEventListener('click', () => {
+            tabStudent.className = "flex-1 py-3 text-center font-bold text-green-700 border-b-4 border-green-600 transition-colors";
+            tabAdmin.className = "flex-1 py-3 text-center font-bold text-gray-400 border-b-4 border-transparent hover:text-green-600 transition-colors";
+            studentForm.classList.remove('hidden');
+            adminForm.classList.add('hidden');
+        });
+
+        tabAdmin.addEventListener('click', () => {
+            tabAdmin.className = "flex-1 py-3 text-center font-bold text-blue-700 border-b-4 border-blue-600 transition-colors";
+            tabStudent.className = "flex-1 py-3 text-center font-bold text-gray-400 border-b-4 border-transparent hover:text-blue-600 transition-colors";
+            adminForm.classList.remove('hidden');
+            studentForm.classList.add('hidden');
+        });
+
+        function updateUIVisibility() {
+            const userInfo = document.getElementById('userInfo');
+            const displayUserName = document.getElementById('displayUserName');
+            const loginSection = document.getElementById('loginSection');
+            const userSection = document.getElementById('userSection');
+            const adminSection = document.getElementById('adminSection');
+
+            // 初始化隱藏全部主要區域
+            loginSection.classList.add('hidden');
+            userSection.classList.add('hidden');
+            adminSection.classList.add('hidden');
+            userInfo.classList.add('hidden');
+
+            if (auth.currentUser) {
+                // 管理員狀態
+                adminSection.classList.remove('hidden');
+                userInfo.classList.remove('hidden');
+                displayUserName.textContent = `管理員：${auth.currentUser.email}`;
+                displayUserName.className = "text-sm font-medium bg-blue-800 px-3 py-1 rounded-full";
+                loadAdminUsersList();
+                if(unsubscribeBooks) unsubscribeBooks(); // 管理員不需要即時監聽書箱
+            } else if (currentStudent) {
+                // 學生狀態
+                userSection.classList.remove('hidden');
+                userInfo.classList.remove('hidden');
+                displayUserName.textContent = `學生：${currentStudent.name} (${currentStudent.id})`;
+                displayUserName.className = "text-sm font-medium bg-green-800 px-3 py-1 rounded-full";
+                initRealtimeBooks(); // 開始監聽書箱即時狀態
+            } else {
+                // 未登入狀態
+                loginSection.classList.remove('hidden');
+                if(unsubscribeBooks) {
+                    unsubscribeBooks();
+                    unsubscribeBooks = null;
+                }
+            }
+        }
+
+        // ==========================================
+        // 登入與登出邏輯
+        // ==========================================
+        
+        // 學生登入 (透過驗證 Firestore 中的 students 集合)
+        studentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnStudentLogin');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 登入中...`;
+            btn.disabled = true;
+
+            const studentId = document.getElementById('studentIdInput').value.trim();
+            
+            try {
+                const docRef = doc(db, "students", studentId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    currentStudent = docSnap.data();
+                    showToast(`歡迎回來，${currentStudent.name}！`, 'success');
+                    updateUIVisibility();
+                    studentForm.reset();
+                } else {
+                    showToast('找不到此學號，請確認後再試或聯繫管理員。', 'error');
+                }
+            } catch (error) {
+                showToast('登入系統發生錯誤，請檢查網路連線。', 'error');
+                console.error("Student login error:", error);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // 管理員登入 (Firebase Auth)
+        adminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnAdminLogin');
+            btn.disabled = true;
+            btn.textContent = "驗證中...";
+
+            const email = document.getElementById('adminEmailInput').value;
+            const pwd = document.getElementById('adminPasswordInput').value;
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, pwd);
+                showToast('管理員登入成功', 'success');
+                adminForm.reset();
+                // Auth state observer will handle UI update
+            } catch (error) {
+                showToast('登入失敗：帳號或密碼錯誤！', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "登入管理後台";
+            }
+        });
+
+        // 登出
+        document.getElementById('btnLogout').addEventListener('click', async () => {
+            if (auth.currentUser) {
+                await signOut(auth); // Firebase 登出
+            }
+            if (currentStudent) {
+                currentStudent = null; // 清除學生狀態
+            }
+            showToast('已成功登出', 'success');
+            updateUIVisibility();
+        });
+
+        // 監聽 Firebase Auth 狀態
+        onAuthStateChanged(auth, (user) => {
+            // 如果 Firebase auth 改變，觸發 UI 更新
+            // 注意：如果 currentStudent 存在，代表是學生登入，不會觸發 AuthState
+            if (!currentStudent) {
+                updateUIVisibility();
+            }
+        });
+
+        // ==========================================
+        // 書箱即時借閱系統邏輯 (學生端)
+        // ==========================================
+        
+        function initRealtimeBooks() {
+            const grid = document.getElementById('booksGrid');
+            grid.innerHTML = '<div class="col-span-full text-center py-10 text-gray-500 font-bold animate-pulse">正在載入書箱資料...</div>';
+
+            const booksQuery = query(collection(db, "books"));
+            
+            // 設定即時監聽
+            unsubscribeBooks = onSnapshot(booksQuery, (snapshot) => {
+                grid.innerHTML = ''; // 清空準備重繪
+                
+                if(snapshot.empty) {
+                    grid.innerHTML = '<div class="col-span-full text-center py-10 text-gray-500 bg-white rounded-lg shadow">目前系統中沒有任何書箱資料。</div>';
+                    return;
+                }
+
+                // 排序：先按 ID 排序
+                const booksData = [];
+                snapshot.forEach(doc => {
+                    booksData.push({ id: doc.id, ...doc.data() });
+                });
+                booksData.sort((a, b) => a.id.localeCompare(b.id));
+
+                booksData.forEach(book => {
+                    const status = book.status || 'available'; // available, borrowed
+                    const isAvailable = status === 'available';
+                    const isMyBorrow = status === 'borrowed' && book.borrowerId === currentStudent?.id;
+                    
+                    // 卡片外觀邏輯
+                    let borderColor, bgColor, statusText, actionHtml;
+
+                    if (isAvailable) {
+                        borderColor = "border-green-500";
+                        bgColor = "bg-white";
+                        statusText = `<span class="text-green-600 font-bold bg-green-50 px-2 py-1 rounded text-sm">✅ 可借閱</span>`;
+                        actionHtml = `<button onclick="window.borrowBook('${book.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg shadow-sm transition-colors">借閱此書箱</button>`;
+                    } else if (isMyBorrow) {
+                        borderColor = "border-amber-500";
+                        bgColor = "bg-amber-50";
+                        statusText = `<span class="text-amber-700 font-bold bg-amber-100 px-2 py-1 rounded text-sm">📖 您已借閱</span>`;
+                        actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg shadow-sm transition-colors">歸還書箱</button>`;
+                    } else {
+                        borderColor = "border-gray-300";
+                        bgColor = "bg-gray-100 opacity-80";
+                        const borrowerName = book.borrowerName || '其他使用者';
+                        statusText = `<span class="text-gray-600 font-bold bg-gray-200 px-2 py-1 rounded text-sm">❌ 已被借出</span>`;
+                        actionHtml = `<div class="w-full mt-4 text-center text-sm text-gray-500 font-bold py-2 bg-gray-200 rounded-lg">已被 ${borrowerName} 借走</div>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = `p-5 rounded-xl shadow-sm border-t-4 ${borderColor} ${bgColor} flex flex-col justify-between transition-all hover:shadow-md`;
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="text-lg font-bold text-gray-800">${book.id}</h3>
+                                ${statusText}
+                            </div>
+                            <h4 class="text-md font-bold text-gray-700 mb-2 truncate" title="${book.name || '未命名書箱'}">${book.name || '未命名書箱'}</h4>
+                            <p class="text-sm text-gray-500 h-10 overflow-hidden line-clamp-2">${book.note || '暫無說明'}</p>
+                        </div>
+                        ${actionHtml}
+                    `;
+                    grid.appendChild(card);
+                });
+
+            }, (error) => {
+                console.error("Firebase real-time error:", error);
+                grid.innerHTML = '<div class="col-span-full text-center py-10 text-red-500 font-bold bg-white rounded-lg">載入失敗，請檢查網路連線或權限設定。</div>';
+            });
+        }
+
+        // 將借閱與歸還函數掛載到 window 以便 onclick 呼叫
+        window.borrowBook = async (bookId) => {
+            if(!currentStudent) return;
+            try {
+                const bookRef = doc(db, "books", bookId);
+                await updateDoc(bookRef, {
+                    status: 'borrowed',
+                    borrowerId: currentStudent.id,
+                    borrowerName: currentStudent.name,
+                    borrowTime: new Date().toISOString()
+                });
+                showToast(`成功借閱書箱：${bookId}`, 'success');
+            } catch (error) {
+                console.error(error);
+                showToast('借閱失敗，該書箱可能已被借走。', 'error');
+            }
+        };
+
+        window.returnBook = async (bookId) => {
+            if(!currentStudent) return;
+            try {
+                const bookRef = doc(db, "books", bookId);
+                await updateDoc(bookRef, {
+                    status: 'available',
+                    borrowerId: null,
+                    borrowerName: null,
+                    borrowTime: null
+                });
+                showToast(`成功歸還書箱：${bookId}`, 'success');
+            } catch (error) {
+                console.error(error);
+                showToast('歸還失敗，請稍後再試。', 'error');
+            }
+        };
+
+        // ==========================================
+        // 管理員：匯入使用者 (Excel)
+        // ==========================================
+        document.getElementById('btnImportUsers').addEventListener('click', () => {
+            const fileInput = document.getElementById('excelFileInput');
+            if (fileInput.files.length === 0) {
+                showToast('請先選擇 Excel 檔案！', 'error');
+                return;
+            }
+            
+            const statsDiv = document.getElementById('importStats');
+            const msgEl = document.getElementById('importMessage');
+            const pBar = document.getElementById('importProgressBar');
+            const btn = document.getElementById('btnImportUsers');
+            
+            statsDiv.classList.remove('hidden');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2 text-white inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 解析中...`;
+            msgEl.textContent = "檔案解析中，請勿關閉網頁...";
+            pBar.style.width = "10%";
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // 強制轉字串避免學號被當成數字
+                    const json = XLSX.utils.sheet_to_json(sheet, {defval: "", raw: false}); 
+                    
+                    if(json.length === 0) {
+                        throw new Error("Excel 檔案為空或格式不符");
+                    }
+
+                    pBar.style.width = "30%";
+                    let count = 0;
+                    let total = json.length;
+
+                    // 開始寫入 Firestore
+                    for(let i = 0; i < total; i++) {
+                        const row = json[i];
+                        const studentId = row['學號'] ? row['學號'].toString().trim() : null;
+                        const name = row['姓名'] ? row['姓名'].toString().trim() : '未知姓名';
+                        const className = row['班級'] ? row['班級'].toString().trim() : '';
+
+                        if(!studentId) continue; // 跳過沒有學號的資料
+
+                        const studentData = {
+                            id: studentId,
+                            name: name,
+                            class: className,
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        await setDoc(doc(db, "students", studentData.id), studentData);
+                        count++;
+                        
+                        // 更新進度條
+                        const progress = 30 + Math.floor((count / total) * 70);
+                        pBar.style.width = `${progress}%`;
+                        msgEl.textContent = `匯入中: 已完成 ${count} / ${total} 筆...`;
+                    }
+                    
+                    msgEl.textContent = `🎉 匯入大功告成！成功匯入/更新 ${count} 位使用者。`;
+                    msgEl.className = "text-sm font-bold text-green-600";
+                    fileInput.value = ""; // 重置 input
+                    showToast(`成功匯入 ${count} 筆資料`, 'success');
+                    
+                    loadAdminUsersList(); // 重新載入列表
+
+                } catch (error) {
+                    console.error("Import error", error);
+                    msgEl.textContent = "匯入失敗，請確保包含「學號」、「姓名」、「班級」欄位標題。";
+                    msgEl.className = "text-sm font-bold text-red-600";
+                    showToast('檔案格式錯誤，匯入失敗', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = `<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> 開始匯入`;
+                }
+            };
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        });
+
+        // 載入使用者清單 (Admin 專用)
+        async function loadAdminUsersList() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500 font-bold animate-pulse">資料載入中...</td></tr>';
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, "students"));
+                const users = [];
+                querySnapshot.forEach(doc => users.push(doc.data()));
+                
+                // 簡單排序：照學號
+                users.sort((a, b) => a.id.localeCompare(b.id));
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">目前沒有任何使用者資料，請使用上方功能匯入。</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${user.id}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-700">${user.name}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${user.class || '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 font-bold">讀取失敗，請檢查資料庫權限</td></tr>';
+            }
+        }
+
+        document.getElementById('btnRefreshUsers').addEventListener('click', loadAdminUsersList);
+
+        // 頁面載入時初始化狀態
+        updateUIVisibility();
+        
+        // 為了在沒有管理員建立書籍的情況下能測試，如果是首次載入，可以提供一段自動建立測試書箱的註解代碼供開發者參考：
+        /*
+        async function createTestBooks() {
+            const batch = window.dbBatch = writeBatch(db); // 需要 import writeBatch
+            for(let i=1; i<=10; i++) {
+                const id = `B00${i}`;
+                batch.set(doc(db, "books", id), {
+                    id: id,
+                    name: `長安閱讀書箱 第${i}冊`,
+                    status: 'available',
+                    note: '測試用書箱資料'
+                });
+            }
+            await batch.commit();
+            console.log("測試資料建立完成");
+        }
+        */
+
+    </script>
+</body>
+</html>
