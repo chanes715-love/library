@@ -44,13 +44,27 @@
             <!-- 學生登入表單 -->
             <form id="studentLoginForm" class="space-y-5">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">學號 / 使用者編號</label>
-                    <input type="text" id="studentIdInput" required placeholder="請輸入學號" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all">
+                    <select id="studentNameSelect" required class="w-full px-4 py-3 bg-white border border-purple-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-sm">
+                        <option value="">-- 請選擇您的姓名 --</option>
+                    </select>
                 </div>
-                <button type="submit" id="btnStudentLogin" class="w-full py-3 px-4 rounded-lg shadow-sm text-md font-bold text-white bg-green-600 hover:bg-green-700 transition-all flex justify-center items-center gap-2">
+                <div>
+                    <input type="password" id="studentPasswordInput" required placeholder="請輸入登入密碼" class="w-full px-4 py-3 bg-white border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-gray-700 shadow-sm">
+                </div>
+                
+                <!-- 提示區塊 -->
+                <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded-r-lg mt-2">
+                    <p class="text-purple-900 font-bold text-sm flex items-center gap-2">
+                        <span>💡</span> 請選擇您的姓名，並輸入密碼登入。
+                    </p>
+                    <p class="text-purple-700 text-xs mt-1 pl-6">
+                        (若無特別修改，預設密碼通常為帳號前綴)
+                    </p>
+                </div>
+
+                <button type="submit" id="btnStudentLogin" class="w-full py-3 px-4 rounded-lg shadow-sm text-md font-bold text-white bg-green-600 hover:bg-green-700 transition-all flex justify-center items-center gap-2 mt-4">
                     進入借閱系統
                 </button>
-                <p class="text-xs text-gray-500 text-center mt-4">請使用管理者匯入的學號進行登入</p>
             </form>
 
             <!-- 管理員登入表單 -->
@@ -121,9 +135,8 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50 sticky top-0">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">學號</th>
                             <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">姓名</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">班級</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">密碼</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
@@ -146,7 +159,7 @@
         // ==========================================
         // Firebase 設置 (請替換為您的實際配置)
         // ==========================================
-            const firebaseConfig = {
+                const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -154,6 +167,7 @@
   messagingSenderId: "1094028983994",
   appId: "1:1094028983994:web:cd0dfcea689b93fdcb0c83"
 };
+
 
         // 為確保在預覽環境也能執行，如果有全域設定則覆蓋
         const finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
@@ -250,7 +264,34 @@
         // 登入與登出邏輯
         // ==========================================
         
-        // 學生登入 (透過驗證 Firestore 中的 students 集合)
+        // 載入學生姓名到下拉選單
+        async function loadStudentNames() {
+            const select = document.getElementById('studentNameSelect');
+            if(!select) return;
+            try {
+                const querySnapshot = await getDocs(collection(db, "students"));
+                const students = [];
+                querySnapshot.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
+                
+                // 按姓名排序
+                students.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                
+                select.innerHTML = '<option value="">-- 請選擇您的姓名 --</option>';
+                students.forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.id; 
+                    option.textContent = s.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error("載入學生名單失敗:", error);
+            }
+        }
+
+        // 初始化載入姓名
+        loadStudentNames();
+
+        // 學生登入 (透過驗證 Firestore 中的 students 集合與密碼)
         studentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnStudentLogin');
@@ -258,19 +299,32 @@
             btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white inline" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 登入中...`;
             btn.disabled = true;
 
-            const studentId = document.getElementById('studentIdInput').value.trim();
+            const studentId = document.getElementById('studentNameSelect').value;
+            const password = document.getElementById('studentPasswordInput').value;
             
+            if (!studentId) {
+                showToast('請先選擇您的姓名！', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+
             try {
                 const docRef = doc(db, "students", studentId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    currentStudent = docSnap.data();
-                    showToast(`歡迎回來，${currentStudent.name}！`, 'success');
-                    updateUIVisibility();
-                    studentForm.reset();
+                    const studentData = docSnap.data();
+                    if (studentData.password === password) {
+                        currentStudent = studentData;
+                        showToast(`歡迎回來，${currentStudent.name}！`, 'success');
+                        updateUIVisibility();
+                        studentForm.reset();
+                    } else {
+                        showToast('密碼錯誤，請重新輸入。', 'error');
+                    }
                 } else {
-                    showToast('找不到此學號，請確認後再試或聯繫管理員。', 'error');
+                    showToast('找不到此使用者，請聯繫管理員。', 'error');
                 }
             } catch (error) {
                 showToast('登入系統發生錯誤，請檢查網路連線。', 'error');
@@ -475,16 +529,15 @@
                     // 開始寫入 Firestore
                     for(let i = 0; i < total; i++) {
                         const row = json[i];
-                        const studentId = row['學號'] ? row['學號'].toString().trim() : null;
-                        const name = row['姓名'] ? row['姓名'].toString().trim() : '未知姓名';
-                        const className = row['班級'] ? row['班級'].toString().trim() : '';
+                        const name = row['姓名'] ? row['姓名'].toString().trim() : null;
+                        const password = row['密碼'] ? row['密碼'].toString().trim() : '';
 
-                        if(!studentId) continue; // 跳過沒有學號的資料
+                        if(!name) continue; // 跳過沒有姓名的資料
 
                         const studentData = {
-                            id: studentId,
+                            id: name,
                             name: name,
-                            class: className,
+                            password: password,
                             updatedAt: new Date().toISOString()
                         };
 
@@ -503,10 +556,11 @@
                     showToast(`成功匯入 ${count} 筆資料`, 'success');
                     
                     loadAdminUsersList(); // 重新載入列表
+                    loadStudentNames(); // 更新前台下拉選單
 
                 } catch (error) {
                     console.error("Import error", error);
-                    msgEl.textContent = "匯入失敗，請確保包含「學號」、「姓名」、「班級」欄位標題。";
+                    msgEl.textContent = "匯入失敗，請確保包含「姓名」、「密碼」欄位標題。";
                     msgEl.className = "text-sm font-bold text-red-600";
                     showToast('檔案格式錯誤，匯入失敗', 'error');
                 } finally {
@@ -520,18 +574,18 @@
         // 載入使用者清單 (Admin 專用)
         async function loadAdminUsersList() {
             const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500 font-bold animate-pulse">資料載入中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500 font-bold animate-pulse">資料載入中...</td></tr>';
             
             try {
                 const querySnapshot = await getDocs(collection(db, "students"));
                 const users = [];
                 querySnapshot.forEach(doc => users.push(doc.data()));
                 
-                // 簡單排序：照學號
-                users.sort((a, b) => a.id.localeCompare(b.id));
+                // 簡單排序：照姓名
+                users.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                 
                 if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">目前沒有任何使用者資料，請使用上方功能匯入。</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500">目前沒有任何使用者資料，請使用上方功能匯入。</td></tr>';
                     return;
                 }
 
@@ -540,15 +594,14 @@
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50 transition-colors";
                     tr.innerHTML = `
-                        <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${user.id}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-700">${user.name}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${user.class || '-'}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${user.name}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${user.password || '無密碼'}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch(e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 font-bold">讀取失敗，請檢查資料庫權限</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-red-500 font-bold">讀取失敗，請檢查資料庫權限</td></tr>';
             }
         }
 
