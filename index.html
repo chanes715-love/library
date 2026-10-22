@@ -279,7 +279,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                 const firebaseConfig = {
+                     const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -611,6 +611,7 @@
                 const status = book.status || 'available';
                 const isAvailable = status === 'available';
                 const isMyBorrow = status === 'borrowed' && book.borrowerId === currentStudent?.id;
+                const isMyPending = status === 'pending' && book.borrowerId === currentStudent?.id;
                 
                 // 外部連結按鈕邏輯
                 const descLinkObj = book.descLink 
@@ -622,13 +623,18 @@
                 if (isAvailable) {
                     statusBadge = ''; 
                     actionHtml = `<button onclick="window.borrowBook('${book.id}')" class="w-full bg-white border-2 ${theme.border} ${theme.text} hover:${theme.bg} hover:text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest">借閱此書箱</button>`;
+                } else if (isMyPending) {
+                    statusBadge = `<span class="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2.5 py-1 rounded shadow-sm animate-pulse font-bold tracking-widest z-10">審核中</span>`;
+                    actionHtml = `<div class="w-full text-center text-amber-600 font-bold py-2 rounded shadow-sm text-sm tracking-widest border-2 border-amber-500 bg-amber-50">申請審核中...</div>`;
                 } else if (isMyBorrow) {
-                    statusBadge = `<span class="absolute top-3 right-3 bg-rose-600 text-white text-xs px-2.5 py-1 rounded shadow-sm animate-pulse font-bold tracking-widest z-10">已借出(您)</span>`;
-                    actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest border-2 border-rose-600">歸還書箱</button>`;
+                    statusBadge = `<span class="absolute top-3 right-3 bg-teal-600 text-white text-xs px-2.5 py-1 rounded shadow-sm animate-pulse font-bold tracking-widest z-10">借閱中</span>`;
+                    actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest border-2 border-teal-600">歸還書箱</button>`;
                 } else {
                     const borrowerName = book.borrowerName || '其他讀者';
-                    statusBadge = `<span class="absolute top-3 right-3 bg-slate-600 text-white text-xs px-2.5 py-1 rounded shadow-sm font-bold tracking-widest z-10">已外借</span>`;
-                    actionHtml = `<div class="w-full text-center text-xs text-slate-500 font-bold py-2.5 bg-slate-100 rounded tracking-wide border border-slate-200">由 ${borrowerName} 借閱中</div>`;
+                    const badgeText = status === 'pending' ? '他人預約審核中' : '已外借';
+                    const badgeColor = status === 'pending' ? 'bg-amber-600' : 'bg-slate-600';
+                    statusBadge = `<span class="absolute top-3 right-3 ${badgeColor} text-white text-xs px-2.5 py-1 rounded shadow-sm font-bold tracking-widest z-10">${badgeText}</span>`;
+                    actionHtml = `<div class="w-full text-center text-xs text-slate-500 font-bold py-2.5 bg-slate-100 rounded tracking-wide border border-slate-200">由 ${borrowerName} 申請/借閱中</div>`;
                 }
 
                 const noteContent = book.note ? book.note : '暫無特別說明。';
@@ -667,26 +673,27 @@
                 
                 querySnapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    if (data.status === 'borrowed' && data.borrowerId === currentStudent.id) {
+                    // 借閱中與審核中的書箱，皆計入額度內
+                    if ((data.status === 'borrowed' || data.status === 'pending') && data.borrowerId === currentStudent.id) {
                         currentBorrowCount++;
                     }
                 });
 
                 if (currentBorrowCount >= globalMaxBorrowLimit) {
-                    showToast(`借閱失敗：每人最高限借 ${globalMaxBorrowLimit} 冊`, 'error');
+                    showToast(`借閱失敗：每人最高限借 ${globalMaxBorrowLimit} 冊 (包含審核中的申請)`, 'error');
                     return;
                 }
 
                 const bookRef = doc(db, "books", bookId);
                 await updateDoc(bookRef, {
-                    status: 'borrowed',
+                    status: 'pending', // 狀態改為待審核
                     borrowerId: currentStudent.id,
                     borrowerName: currentStudent.name,
-                    borrowTime: new Date().toISOString()
+                    requestTime: new Date().toISOString()
                 });
-                showToast(`借閱成功：已登記 ${bookId} 於您名下`, 'success');
+                showToast(`申請已送出！請等待管理員審核 ${bookId}`, 'success');
             } catch (error) {
-                showToast('手腳太慢了！該書箱剛剛已被借走', 'error');
+                showToast('手腳太慢了！該書箱剛剛已被申請', 'error');
             }
         };
 
@@ -981,16 +988,28 @@
                 tbody.innerHTML = '';
                 books.forEach(book => {
                     const isAvailable = book.status === 'available' || !book.status;
-                    const statusHtml = isAvailable 
-                        ? `<span class="px-3 py-1 bg-teal-50 border border-teal-200 text-teal-800 rounded-md text-xs font-bold tracking-widest">在館</span>`
-                        : `<span class="px-3 py-1 bg-slate-200 border border-slate-300 text-slate-600 rounded-md text-xs font-bold tracking-widest">借出</span>`;
-                    
-                    const borrowerInfo = isAvailable ? '<span class="text-slate-300">-</span>' : `<span class="font-bold text-indigo-900">${book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerId || '未知'})</span>`;
-                    
-                    const actionHtml = isAvailable 
-                        ? `<span class="text-slate-300 text-sm tracking-widest">-</span>`
-                        : `<button class="text-rose-700 hover:text-rose-900 font-bold transition-colors admin-return-btn tracking-widest" data-id="${book.id}">強制收回</button>`;
+                    const isPending = book.status === 'pending';
+                    const isBorrowed = book.status === 'borrowed';
 
+                    let statusHtml, borrowerInfo, actionHtml;
+
+                    if (isAvailable) {
+                        statusHtml = `<span class="px-3 py-1 bg-teal-50 border border-teal-200 text-teal-800 rounded-md text-xs font-bold tracking-widest">在館</span>`;
+                        borrowerInfo = '<span class="text-slate-300">-</span>';
+                        actionHtml = `<span class="text-slate-300 text-sm tracking-widest">-</span>`;
+                    } else if (isPending) {
+                        statusHtml = `<span class="px-3 py-1 bg-amber-100 border border-amber-300 text-amber-800 rounded-md text-xs font-bold tracking-widest animate-pulse">待審核</span>`;
+                        borrowerInfo = `<span class="font-bold text-amber-700">${book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerId || '未知'})</span>`;
+                        actionHtml = `
+                            <button class="text-teal-700 hover:text-teal-900 font-bold transition-colors admin-approve-btn tracking-widest mr-3 border border-teal-600/30 px-2 py-1 rounded bg-teal-50 hover:bg-teal-100" data-id="${book.id}">核准</button>
+                            <button class="text-slate-500 hover:text-rose-700 font-bold transition-colors admin-reject-btn tracking-widest" data-id="${book.id}">駁回</button>
+                        `;
+                    } else {
+                        statusHtml = `<span class="px-3 py-1 bg-slate-200 border border-slate-300 text-slate-600 rounded-md text-xs font-bold tracking-widest">借出中</span>`;
+                        borrowerInfo = `<span class="font-bold text-indigo-900">${book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerId || '未知'})</span>`;
+                        actionHtml = `<button class="text-rose-700 hover:text-rose-900 font-bold transition-colors admin-return-btn tracking-widest" data-id="${book.id}">強制收回</button>`;
+                    }
+                    
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-100/50 transition-colors";
                     tr.innerHTML = `
@@ -1005,6 +1024,12 @@
                     tbody.appendChild(tr);
                 });
 
+                document.querySelectorAll('.admin-approve-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => window.adminApproveBook(e.target.dataset.id));
+                });
+                document.querySelectorAll('.admin-reject-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => window.adminRejectBook(e.target.dataset.id));
+                });
                 document.querySelectorAll('.admin-return-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => window.adminForceReturnBook(e.target.dataset.id));
                 });
@@ -1016,6 +1041,38 @@
 
         const btnRefreshAdminBooks = document.getElementById('btnRefreshAdminBooks');
         if(btnRefreshAdminBooks) btnRefreshAdminBooks.addEventListener('click', loadAdminBooksStatus);
+
+        window.adminApproveBook = async function(bookId) {
+            try {
+                const bookRef = doc(db, "books", bookId);
+                await updateDoc(bookRef, {
+                    status: 'borrowed',
+                    borrowTime: new Date().toISOString()
+                });
+                showToast(`已核准 ${bookId} 的借閱申請`, 'success');
+                loadAdminBooksStatus(); 
+            } catch(e) {
+                showToast('系統作業失敗，請確認權限', 'error');
+            }
+        };
+
+        window.adminRejectBook = function(bookId) {
+            showConfirm('駁回確認', `確定要駁回書箱「${bookId}」的借閱申請嗎？`, async () => {
+                try {
+                    const bookRef = doc(db, "books", bookId);
+                    await updateDoc(bookRef, {
+                        status: 'available',
+                        borrowerId: null,
+                        borrowerName: null,
+                        requestTime: null
+                    });
+                    showToast(`已駁回 ${bookId} 的申請，並恢復在館狀態`, 'success');
+                    loadAdminBooksStatus(); 
+                } catch(e) {
+                    showToast('系統作業失敗，請確認權限', 'error');
+                }
+            });
+        };
 
         window.adminForceReturnBook = function(bookId) {
             showConfirm('強制歸還確認', `確定要將書箱「${bookId}」變更為未借出狀態嗎？`, async () => {
