@@ -284,7 +284,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                     const firebaseConfig = {
+                const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -470,7 +470,7 @@
                 students.forEach(s => {
                     const option = document.createElement('option');
                     option.value = s.id; 
-                    option.textContent = s.className ? `${s.className} - ${s.name}` : s.name;
+                    option.textContent = s.name; // 修改此處，移除前面的班級名稱顯示
                     select.appendChild(option);
                 });
             } catch (error) {
