@@ -10,8 +10,8 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700;900&display=swap');
         
         body { 
-            /* 淺綠色背景，符合書架主題 */
-            background-color: #d1e7c5; 
+            /* 淡藍色背景，符合日系藍色主題 */
+            background-color: #e0f2fe; 
             font-family: 'Noto Sans TC', sans-serif; 
         }
         
@@ -284,7 +284,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                          const firebaseConfig = {
+                       const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -292,7 +292,6 @@
   messagingSenderId: "1094028983994",
   appId: "1:1094028983994:web:cd0dfcea689b93fdcb0c83"
 };
-
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -545,8 +544,8 @@
             let account = document.getElementById('adminEmailInput').value.trim();
             const pwd = document.getElementById('adminPasswordInput').value;
             
-            // 若沒有輸入 @，自動補上虛擬網域以符合 Firebase 要求
-            const email = account.includes('@') ? account : `${account}@admin.system`;
+            // 若沒有輸入 @，自動補上學校網域以符合 Firebase 要求
+            const email = account.includes('@') ? account : `${account}@mail.chanes.tc.edu.tw`;
             
             try {
                 await signInWithEmailAndPassword(auth, email, pwd);
