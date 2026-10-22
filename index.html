@@ -75,10 +75,10 @@
                 <!-- 提示區塊 -->
                 <div class="bg-indigo-50/50 border-l-4 border-indigo-400 p-4 rounded-r-lg mt-2 shadow-sm">
                     <p class="text-indigo-900 font-bold text-sm flex items-center gap-2">
-                        <span class="text-indigo-600">💡</span> 請選擇您的姓名，並輸入密碼。
+                        <span class="text-indigo-600">💡</span> 請選擇您的姓名，並輸入密碼登入。
                     </p>
                     <p class="text-indigo-700 text-xs mt-1.5 pl-6 opacity-80">
-                        (預設密碼通常為您的學號或帳號前綴)
+                        (借閱時系統會自動以您所屬的班級/處室進行登記)
                     </p>
                 </div>
 
@@ -143,7 +143,7 @@
                 <!-- 大量匯入區塊 -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-teal-600">
                     <h2 class="text-xl font-bold mb-2 text-teal-800 title-font">批次匯入使用者</h2>
-                    <p class="text-sm text-slate-600 mb-4">請上傳包含 <strong>姓名</strong> 與 <strong>密碼</strong> 欄位的 Excel 檔案。</p>
+                    <p class="text-sm text-slate-600 mb-4">請上傳包含 <strong>姓名</strong>、<strong>班級/處室</strong> 與 <strong>密碼</strong> 欄位的 Excel 檔案。</p>
                     
                     <div class="flex flex-col gap-3 items-center bg-slate-50 p-4 rounded-lg border border-slate-100">
                         <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-700 file:text-white hover:file:bg-teal-800 transition-all cursor-pointer"/>
@@ -169,7 +169,11 @@
                     <form id="userForm" class="space-y-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">姓名 (登入帳號)</label>
-                            <input type="text" id="userNameInput" required placeholder="例如: B103_王O雀" class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-amber-500 focus:border-amber-500 bg-slate-50 focus:bg-white">
+                            <input type="text" id="userNameInput" required placeholder="例如: 王小明" class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-amber-500 focus:border-amber-500 bg-slate-50 focus:bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">班級/處室 (借閱顯示用)</label>
+                            <input type="text" id="userClassInput" placeholder="例如: 一年一班 / 教務處" class="w-full px-4 py-2 border border-slate-300 rounded focus:ring-amber-500 focus:border-amber-500 bg-slate-50 focus:bg-white">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-1">密碼</label>
@@ -203,6 +207,7 @@
                                     <input type="checkbox" id="selectAllUsers" class="w-4 h-4 text-indigo-700 rounded border-slate-300 focus:ring-indigo-600 cursor-pointer">
                                 </th>
                                 <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">姓名 (帳號)</th>
+                                <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">班級/處室</th>
                                 <th class="px-6 py-3.5 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">密碼</th>
                                 <th class="px-4 py-3.5 text-right text-xs font-bold text-slate-600 uppercase tracking-widest w-32">操作</th>
                             </tr>
@@ -435,7 +440,7 @@
             } else if (currentStudent) {
                 userSection.classList.remove('hidden');
                 userInfo.classList.remove('hidden');
-                displayUserName.textContent = `閱讀者・${currentStudent.name}`;
+                displayUserName.textContent = `閱讀者・${currentStudent.name} (${currentStudent.className || '無班級'})`;
                 displayUserName.className = "text-sm font-medium bg-teal-800/80 text-white border border-teal-700 px-4 py-1.5 rounded-full shadow-inner tracking-wide";
                 initRealtimeBooks(); 
             } else {
@@ -465,7 +470,7 @@
                 students.forEach(s => {
                     const option = document.createElement('option');
                     option.value = s.id; 
-                    option.textContent = s.name;
+                    option.textContent = s.className ? `${s.className} - ${s.name}` : s.name;
                     select.appendChild(option);
                 });
             } catch (error) {
@@ -630,11 +635,11 @@
                     statusBadge = `<span class="absolute top-3 right-3 bg-teal-600 text-white text-xs px-2.5 py-1 rounded shadow-sm animate-pulse font-bold tracking-widest z-10">借閱中</span>`;
                     actionHtml = `<button onclick="window.returnBook('${book.id}')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded shadow-sm transition-colors text-sm tracking-widest border-2 border-teal-600">歸還書箱</button>`;
                 } else {
-                    const borrowerName = book.borrowerName || '其他讀者';
+                    const borrowerDisplay = book.borrowerClass && book.borrowerClass !== '未設定班級' ? book.borrowerClass : (book.borrowerName || '其他讀者');
                     const badgeText = status === 'pending' ? '他人預約審核中' : '已外借';
                     const badgeColor = status === 'pending' ? 'bg-amber-600' : 'bg-slate-600';
                     statusBadge = `<span class="absolute top-3 right-3 ${badgeColor} text-white text-xs px-2.5 py-1 rounded shadow-sm font-bold tracking-widest z-10">${badgeText}</span>`;
-                    actionHtml = `<div class="w-full text-center text-xs text-slate-500 font-bold py-2.5 bg-slate-100 rounded tracking-wide border border-slate-200">由 ${borrowerName} 申請/借閱中</div>`;
+                    actionHtml = `<div class="w-full text-center text-xs text-slate-500 font-bold py-2.5 bg-slate-100 rounded tracking-wide border border-slate-200">由 ${borrowerDisplay} 申請/借閱中</div>`;
                 }
 
                 const noteContent = book.note ? book.note : '暫無特別說明。';
@@ -689,6 +694,7 @@
                     status: 'pending', // 狀態改為待審核
                     borrowerId: currentStudent.id,
                     borrowerName: currentStudent.name,
+                    borrowerClass: currentStudent.className || '未設定班級',
                     requestTime: new Date().toISOString()
                 });
                 showToast(`申請已送出！請等待管理員審核 ${bookId}`, 'success');
@@ -749,6 +755,7 @@
                             <input type="checkbox" class="user-checkbox w-4 h-4 text-indigo-700 rounded border-slate-300 focus:ring-indigo-600 cursor-pointer" value="${user.id}">
                         </td>
                         <td class="px-6 py-3.5 whitespace-nowrap text-sm font-bold text-slate-800">${user.name}</td>
+                        <td class="px-6 py-3.5 whitespace-nowrap text-sm text-slate-600">${user.className || '-'}</td>
                         <td class="px-6 py-3.5 whitespace-nowrap text-sm text-slate-500 font-mono">${user.password || '-'}</td>
                         <td class="px-4 py-3.5 whitespace-nowrap text-right text-sm font-bold">
                             <button class="text-amber-700 hover:text-amber-900 mr-4 edit-user-btn transition-colors tracking-widest" data-id="${user.id}">編輯</button>
@@ -811,11 +818,12 @@
                     for(let i = 0; i < total; i++) {
                         const row = json[i];
                         const name = row['姓名'] ? row['姓名'].toString().trim() : null;
+                        const className = row['班級/處室'] ? row['班級/處室'].toString().trim() : (row['班級'] ? row['班級'].toString().trim() : '');
                         const password = row['密碼'] ? row['密碼'].toString().trim() : '';
 
                         if(!name) continue; 
 
-                        const studentData = { id: name, name: name, password: password, updatedAt: new Date().toISOString() };
+                        const studentData = { id: name, name: name, className: className, password: password, updatedAt: new Date().toISOString() };
                         await setDoc(doc(db, "students", studentData.id), studentData);
                         count++;
                         
@@ -831,7 +839,7 @@
                     loadStudentNames(); 
 
                 } catch (error) {
-                    msgEl.textContent = "匯入失敗，請確認標題列是否為「姓名」與「密碼」。";
+                    msgEl.textContent = "匯入失敗，請確認標題列是否包含「姓名」與「密碼」。";
                     showToast('檔案格式解析失敗', 'error');
                 } finally {
                     btn.disabled = false;
@@ -849,8 +857,9 @@
             btn.textContent = "寫入中...";
 
             const name = document.getElementById('userNameInput').value.trim();
+            const className = document.getElementById('userClassInput').value.trim();
             const password = document.getElementById('userPwdInput').value.trim();
-            const studentData = { id: name, name: name, password: password, updatedAt: new Date().toISOString() };
+            const studentData = { id: name, name: name, className: className, password: password, updatedAt: new Date().toISOString() };
 
             try {
                 await setDoc(doc(db, "students", studentData.id), studentData);
@@ -872,6 +881,7 @@
                 document.getElementById('userNameInput').value = user.name;
                 document.getElementById('userNameInput').readOnly = true; 
                 document.getElementById('userNameInput').classList.add('bg-slate-200', 'text-slate-500', 'cursor-not-allowed');
+                document.getElementById('userClassInput').value = user.className || '';
                 document.getElementById('userPwdInput').value = user.password;
                 
                 document.getElementById('userFormTitle').innerHTML = `編輯帳號: <span class="text-amber-600 font-mono">${user.name}</span>`;
@@ -892,7 +902,7 @@
         document.getElementById('btnCancelEditUser').addEventListener('click', resetUserForm);
 
         function deleteSingleUser(id) {
-            showConfirm('除籍確認', `確定要將讀者「${id}」從系統刪除嗎？\n此動作將無法復原。`, async () => {
+            showConfirm('除籍確認', `確定要將「${id}」從系統刪除嗎？\n此動作將無法復原。`, async () => {
                 try {
                     await deleteDoc(doc(db, "students", id));
                     showToast(`已註銷使用者: ${id}`, 'success');
@@ -924,7 +934,7 @@
 
         btnBatchDeleteUsers.addEventListener('click', () => {
             const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-            showConfirm('大量除籍確認', `警告：即將徹底刪除 ${ids.length} 筆讀者資料！\n確定要執行此破壞性操作嗎？`, async () => {
+            showConfirm('大量除籍確認', `警告：即將徹底刪除 ${ids.length} 筆班級/處室資料！\n確定要執行此破壞性操作嗎？`, async () => {
                 btnBatchDeleteUsers.disabled = true;
                 btnBatchDeleteUsers.textContent = "執行中...";
                 try {
@@ -999,14 +1009,14 @@
                         actionHtml = `<span class="text-slate-300 text-sm tracking-widest">-</span>`;
                     } else if (isPending) {
                         statusHtml = `<span class="px-3 py-1 bg-amber-100 border border-amber-300 text-amber-800 rounded-md text-xs font-bold tracking-widest animate-pulse">待審核</span>`;
-                        borrowerInfo = `<span class="font-bold text-amber-700">${book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerId || '未知'})</span>`;
+                        borrowerInfo = `<span class="font-bold text-amber-700">${book.borrowerClass || book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerName || '未知'})</span>`;
                         actionHtml = `
                             <button class="text-teal-700 hover:text-teal-900 font-bold transition-colors admin-approve-btn tracking-widest mr-3 border border-teal-600/30 px-2 py-1 rounded bg-teal-50 hover:bg-teal-100" data-id="${book.id}">核准</button>
                             <button class="text-slate-500 hover:text-rose-700 font-bold transition-colors admin-reject-btn tracking-widest" data-id="${book.id}">駁回</button>
                         `;
                     } else {
                         statusHtml = `<span class="px-3 py-1 bg-slate-200 border border-slate-300 text-slate-600 rounded-md text-xs font-bold tracking-widest">借出中</span>`;
-                        borrowerInfo = `<span class="font-bold text-indigo-900">${book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerId || '未知'})</span>`;
+                        borrowerInfo = `<span class="font-bold text-indigo-900">${book.borrowerClass || book.borrowerName || '未知'}</span> <span class="text-xs text-slate-500 font-mono">(${book.borrowerName || '未知'})</span>`;
                         actionHtml = `<button class="text-rose-700 hover:text-rose-900 font-bold transition-colors admin-return-btn tracking-widest" data-id="${book.id}">強制收回</button>`;
                     }
                     
