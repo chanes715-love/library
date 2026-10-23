@@ -346,12 +346,12 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, writeBatch, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, writeBatch, onSnapshot, query, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                const firebaseConfig = {
+                  const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -1184,9 +1184,8 @@
                     const data = bookSnap.data();
                     const borrowTime = new Date().toISOString();
                     
-                    // 1. 新增借閱歷程紀錄 (Borrow Log)
-                    const logDocRef = doc(collection(db, "borrowLogs"));
-                    await setDoc(logDocRef, {
+                    // 1. 新增借閱歷程紀錄 (Borrow Log) - 只要核准出借成功，就立刻算一筆正式借閱資料
+                    const logDocRef = await addDoc(collection(db, "borrowLogs"), {
                         bookId: bookId,
                         bookName: data.name || '未命名',
                         borrowerId: data.borrowerId,
@@ -1204,7 +1203,7 @@
                         currentLogId: logDocRef.id
                     });
                     
-                    showToast(`已核准 ${bookId} 的借閱申請`, 'success');
+                    showToast(`已核准 ${bookId} 出借，並已計入該班級借閱統計！`, 'success');
                     loadAdminBooksStatus(); 
                 }
             } catch(e) {
