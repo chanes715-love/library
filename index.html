@@ -131,9 +131,10 @@
     <div id="adminSection" class="hidden flex-grow p-6 max-w-7xl mx-auto w-full space-y-6">
         
         <!-- 管理員專屬頁籤 -->
-        <div class="flex border-b border-slate-300 mb-6 bg-white/50 p-2 rounded-t-xl">
-            <button id="btnAdminTabUsers" class="px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest">使用者管理</button>
-            <button id="btnAdminTabBooks" class="px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest">系統設定與狀態</button>
+        <div class="flex border-b border-slate-300 mb-6 bg-white/50 p-2 rounded-t-xl overflow-x-auto">
+            <button id="btnAdminTabUsers" class="px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest whitespace-nowrap">使用者管理</button>
+            <button id="btnAdminTabBooks" class="px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest whitespace-nowrap">系統設定與狀態</button>
+            <button id="btnAdminTabReports" class="px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest whitespace-nowrap">借閱報表與歷程</button>
         </div>
 
         <!-- 帳號管理視圖 -->
@@ -258,6 +259,70 @@
                 </div>
             </div>
         </div>
+
+        <!-- 借閱報表與歷程視圖 -->
+        <div id="adminViewReports" class="hidden space-y-6">
+            <!-- 報表控制區 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-blue-600">
+                <h2 class="text-xl font-bold mb-4 text-blue-900 title-font">每月借閱資料查詢</h2>
+                <div class="flex flex-col sm:flex-row gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">選擇查詢月份</label>
+                        <input type="month" id="reportMonthInput" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-bold text-slate-700 shadow-sm outline-none transition-all">
+                    </div>
+                    <button id="btnGenerateReport" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition-colors tracking-widest flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        產生報表
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 班級借閱統計 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col max-h-[500px]">
+                    <h3 class="text-lg font-bold text-indigo-950 mb-4 border-b border-slate-100 pb-3 flex justify-between items-center">
+                        <span>📊 班級/處室借閱統計</span>
+                        <span id="reportMonthDisplay1" class="text-sm font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded"></span>
+                    </h3>
+                    <div class="overflow-y-auto flex-grow rounded-lg border border-slate-100">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">班級 / 處室</th>
+                                    <th class="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-widest">借閱次數</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classReportTableBody" class="divide-y divide-slate-100 bg-white">
+                                <tr><td colspan="2" class="px-4 py-8 text-center text-slate-400 font-bold">請點擊「產生報表」按鈕</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 書箱借閱紀錄 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col max-h-[500px]">
+                    <h3 class="text-lg font-bold text-indigo-950 mb-4 border-b border-slate-100 pb-3 flex justify-between items-center">
+                        <span>📖 書箱借閱詳細紀錄</span>
+                        <span id="reportMonthDisplay2" class="text-sm font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded"></span>
+                    </h3>
+                    <div class="overflow-y-auto flex-grow rounded-lg border border-slate-100">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">書箱 (登錄號)</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">借閱者</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-widest">借出/歸還日</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookReportTableBody" class="divide-y divide-slate-100 bg-white">
+                                <tr><td colspan="3" class="px-4 py-8 text-center text-slate-400 font-bold">請點擊「產生報表」按鈕</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- 吐司通知容器 -->
@@ -284,7 +349,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                       const firebaseConfig = {
+                   const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -292,6 +357,7 @@
   messagingSenderId: "1094028983994",
   appId: "1:1094028983994:web:cd0dfcea689b93fdcb0c83"
 };
+
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -397,22 +463,45 @@
 
         const btnAdminTabUsers = document.getElementById('btnAdminTabUsers');
         const btnAdminTabBooks = document.getElementById('btnAdminTabBooks');
+        const btnAdminTabReports = document.getElementById('btnAdminTabReports');
         const adminViewUsers = document.getElementById('adminViewUsers');
         const adminViewBooks = document.getElementById('adminViewBooks');
+        const adminViewReports = document.getElementById('adminViewReports');
 
-        if(btnAdminTabUsers && btnAdminTabBooks) {
+        function resetAdminTabs() {
+            btnAdminTabUsers.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
+            btnAdminTabBooks.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
+            btnAdminTabReports.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
+            adminViewUsers.classList.add('hidden');
+            adminViewBooks.classList.add('hidden');
+            adminViewReports.classList.add('hidden');
+        }
+
+        if(btnAdminTabUsers && btnAdminTabBooks && btnAdminTabReports) {
             btnAdminTabUsers.addEventListener('click', () => {
-                btnAdminTabUsers.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest";
-                btnAdminTabBooks.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest";
+                resetAdminTabs();
+                btnAdminTabUsers.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
                 adminViewUsers.classList.remove('hidden');
-                adminViewBooks.classList.add('hidden');
             });
             btnAdminTabBooks.addEventListener('click', () => {
-                btnAdminTabBooks.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest";
-                btnAdminTabUsers.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest";
+                resetAdminTabs();
+                btnAdminTabBooks.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
                 adminViewBooks.classList.remove('hidden');
-                adminViewUsers.classList.add('hidden');
                 loadAdminBooksStatus(); 
+            });
+            btnAdminTabReports.addEventListener('click', () => {
+                resetAdminTabs();
+                btnAdminTabReports.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
+                adminViewReports.classList.remove('hidden');
+                
+                // 預設填入當前月份
+                const monthInput = document.getElementById('reportMonthInput');
+                if(!monthInput.value) {
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    monthInput.value = `${y}-${m}`;
+                }
             });
         }
 
@@ -438,15 +527,7 @@
                 displayUserName.className = "text-sm font-medium bg-indigo-800/80 text-white border border-indigo-700 px-4 py-1.5 rounded-full shadow-inner tracking-wide";
                 
                 // 預設切換到「系統設定與狀態」頁籤
-                const btnAdminTabUsers = document.getElementById('btnAdminTabUsers');
-                const btnAdminTabBooks = document.getElementById('btnAdminTabBooks');
-                const adminViewUsers = document.getElementById('adminViewUsers');
-                const adminViewBooks = document.getElementById('adminViewBooks');
-                
-                btnAdminTabBooks.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest";
-                btnAdminTabUsers.className = "px-6 py-3 font-bold text-slate-500 border-b-2 border-transparent hover:text-indigo-600 transition-colors focus:outline-none tracking-widest";
-                adminViewBooks.classList.remove('hidden');
-                adminViewUsers.classList.add('hidden');
+                if (btnAdminTabBooks) btnAdminTabBooks.click();
 
                 loadAdminUsersList();
                 loadAdminBooksStatus();
@@ -724,11 +805,28 @@
             if(!currentStudent) return;
             try {
                 const bookRef = doc(db, "books", bookId);
+                const bookSnap = await getDoc(bookRef);
+                
+                // 1. 若有對應的借閱歷程，寫入歸還時間
+                if(bookSnap.exists()) {
+                    const data = bookSnap.data();
+                    if(data.currentLogId) {
+                        await updateDoc(doc(db, "borrowLogs", data.currentLogId), {
+                            returnTime: new Date().toISOString(),
+                            status: 'returned'
+                        });
+                    }
+                }
+
+                // 2. 清空書箱借出狀態
                 await updateDoc(bookRef, {
                     status: 'available',
                     borrowerId: null,
                     borrowerName: null,
-                    borrowTime: null
+                    borrowerClass: null,
+                    borrowTime: null,
+                    requestTime: null,
+                    currentLogId: null
                 });
                 showToast(`歸還成功：感謝您的愛惜使用`, 'success');
             } catch (error) {
@@ -1072,12 +1170,35 @@
         window.adminApproveBook = async function(bookId) {
             try {
                 const bookRef = doc(db, "books", bookId);
-                await updateDoc(bookRef, {
-                    status: 'borrowed',
-                    borrowTime: new Date().toISOString()
-                });
-                showToast(`已核准 ${bookId} 的借閱申請`, 'success');
-                loadAdminBooksStatus(); 
+                const bookSnap = await getDoc(bookRef);
+                
+                if (bookSnap.exists()) {
+                    const data = bookSnap.data();
+                    const borrowTime = new Date().toISOString();
+                    
+                    // 1. 新增借閱歷程紀錄 (Borrow Log)
+                    const logDocRef = doc(collection(db, "borrowLogs"));
+                    await setDoc(logDocRef, {
+                        bookId: bookId,
+                        bookName: data.name || '未命名',
+                        borrowerId: data.borrowerId,
+                        borrowerName: data.borrowerName,
+                        borrowerClass: data.borrowerClass,
+                        borrowTime: borrowTime,
+                        returnTime: null,
+                        status: 'borrowed'
+                    });
+
+                    // 2. 更新書箱當前狀態，並綁定 Log ID
+                    await updateDoc(bookRef, {
+                        status: 'borrowed',
+                        borrowTime: borrowTime,
+                        currentLogId: logDocRef.id
+                    });
+                    
+                    showToast(`已核准 ${bookId} 的借閱申請`, 'success');
+                    loadAdminBooksStatus(); 
+                }
             } catch(e) {
                 showToast('系統作業失敗，請確認權限', 'error');
             }
@@ -1105,11 +1226,28 @@
             showConfirm('強制歸還確認', `確定要將書箱「${bookId}」變更為未借出狀態嗎？`, async () => {
                 try {
                     const bookRef = doc(db, "books", bookId);
+                    const bookSnap = await getDoc(bookRef);
+                    
+                    // 1. 若有對應的借閱歷程，寫入歸還時間
+                    if(bookSnap.exists()) {
+                        const data = bookSnap.data();
+                        if(data.currentLogId) {
+                            await updateDoc(doc(db, "borrowLogs", data.currentLogId), {
+                                returnTime: new Date().toISOString(),
+                                status: 'returned'
+                            });
+                        }
+                    }
+
+                    // 2. 清空書箱狀態
                     await updateDoc(bookRef, {
                         status: 'available',
                         borrowerId: null,
                         borrowerName: null,
-                        borrowTime: null
+                        borrowerClass: null,
+                        borrowTime: null,
+                        requestTime: null,
+                        currentLogId: null
                     });
                     showToast(`已強制將 ${bookId} 回收至館藏`, 'success');
                     loadAdminBooksStatus(); 
@@ -1118,6 +1256,103 @@
                 }
             });
         };
+
+        // ==========================================
+        // 管理員：借閱報表與歷程邏輯
+        // ==========================================
+        const btnGenerateReport = document.getElementById('btnGenerateReport');
+        if(btnGenerateReport) {
+            btnGenerateReport.addEventListener('click', async () => {
+                const monthVal = document.getElementById('reportMonthInput').value;
+                if(!monthVal) { 
+                    showToast('請先選擇要查詢的月份', 'error'); 
+                    return; 
+                }
+
+                document.getElementById('reportMonthDisplay1').textContent = monthVal;
+                document.getElementById('reportMonthDisplay2').textContent = monthVal;
+
+                const classTbody = document.getElementById('classReportTableBody');
+                const bookTbody = document.getElementById('bookReportTableBody');
+                
+                classTbody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-blue-500 font-bold animate-pulse">資料撈取中...</td></tr>';
+                bookTbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-blue-500 font-bold animate-pulse">資料撈取中...</td></tr>';
+
+                try {
+                    // 取得所有歷程紀錄 (因不使用複雜查詢，由前端做篩選與統計)
+                    const querySnapshot = await getDocs(collection(db, "borrowLogs"));
+                    const logs = [];
+                    querySnapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+
+                    // 過濾出符合所選月份的紀錄 (依據借出時間)
+                    const filteredLogs = logs.filter(log => {
+                        if(!log.borrowTime) return false;
+                        return log.borrowTime.startsWith(monthVal);
+                    });
+
+                    // 1. 班級借閱統計
+                    const classStats = {};
+                    filteredLogs.forEach(log => {
+                        const cName = log.borrowerClass || '未設定班級';
+                        classStats[cName] = (classStats[cName] || 0) + 1;
+                    });
+
+                    classTbody.innerHTML = '';
+                    const sortedClasses = Object.entries(classStats).sort((a, b) => b[1] - a[1]); // 依次數降冪
+                    
+                    if(sortedClasses.length === 0) {
+                        classTbody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-slate-500">該月份尚無任何借閱紀錄</td></tr>';
+                    } else {
+                        sortedClasses.forEach(([cName, count]) => {
+                            classTbody.innerHTML += `
+                                <tr class="hover:bg-blue-50/50 transition-colors">
+                                    <td class="px-4 py-3 font-bold text-slate-700">${cName}</td>
+                                    <td class="px-4 py-3 text-right text-blue-700 font-bold text-lg">${count}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                    // 2. 書箱借閱詳細紀錄
+                    bookTbody.innerHTML = '';
+                    filteredLogs.sort((a, b) => new Date(b.borrowTime) - new Date(a.borrowTime)); // 依借出時間新到舊
+                    
+                    if(filteredLogs.length === 0) {
+                        bookTbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">該月份尚無任何借閱紀錄</td></tr>';
+                    } else {
+                        filteredLogs.forEach(log => {
+                            const bTime = new Date(log.borrowTime).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            const rTime = log.returnTime 
+                                ? new Date(log.returnTime).toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) 
+                                : '<span class="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded text-xs animate-pulse">尚未歸還</span>';
+                                
+                            bookTbody.innerHTML += `
+                                <tr class="hover:bg-blue-50/50 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-slate-800 font-mono text-sm">${log.bookId}</div>
+                                        <div class="text-xs text-slate-500 mt-0.5 truncate max-w-[150px]" title="${log.bookName}">${log.bookName}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-indigo-900 text-sm">${log.borrowerClass}</div>
+                                        <div class="text-xs text-slate-500">${log.borrowerName}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-slate-600 space-y-1">
+                                        <div><span class="text-slate-400 inline-block w-8">借出:</span> ${bTime}</div>
+                                        <div><span class="text-slate-400 inline-block w-8">歸還:</span> ${rTime}</div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    showToast('報表產生失敗，請確認連線', 'error');
+                    classTbody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-rose-500">撈取資料發生錯誤</td></tr>';
+                    bookTbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-rose-500">撈取資料發生錯誤</td></tr>';
+                }
+            });
+        }
 
         updateUIVisibility();
 
