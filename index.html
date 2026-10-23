@@ -266,11 +266,15 @@
         <div id="adminViewReports" class="hidden space-y-6">
             <!-- 報表控制區 -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-blue-600">
-                <h2 class="text-xl font-bold mb-4 text-blue-900 title-font">每月借閱資料查詢</h2>
+                <h2 class="text-xl font-bold mb-4 text-blue-900 title-font">區間借閱資料查詢</h2>
                 <div class="flex flex-col sm:flex-row gap-4 items-end">
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">選擇查詢月份</label>
-                        <input type="month" id="reportMonthInput" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-bold text-slate-700 shadow-sm outline-none transition-all">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">開始日期</label>
+                        <input type="date" id="reportStartDate" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-bold text-slate-700 shadow-sm outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">結束日期</label>
+                        <input type="date" id="reportEndDate" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 font-bold text-slate-700 shadow-sm outline-none transition-all">
                     </div>
                     <button id="btnGenerateReport" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition-colors tracking-widest flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -351,7 +355,7 @@
         // ==========================================
         // 🌟 1. Firebase 設置區塊 (請替換為您的實際配置) 🌟
         // ==========================================
-                  const firebaseConfig = {
+                 const firebaseConfig = {
   apiKey: "AIzaSyDrog2SU3iOuaNXnMT6A5Ekrdmd-5jG6A0",
   authDomain: "bookbox-ee296.firebaseapp.com",
   projectId: "bookbox-ee296",
@@ -359,7 +363,6 @@
   messagingSenderId: "1094028983994",
   appId: "1:1094028983994:web:cd0dfcea689b93fdcb0c83"
 };
-
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -496,13 +499,16 @@
                 btnAdminTabReports.className = "px-6 py-3 font-bold text-indigo-800 border-b-2 border-indigo-800 transition-colors focus:outline-none tracking-widest whitespace-nowrap";
                 adminViewReports.classList.remove('hidden');
                 
-                // 預設填入當前月份
-                const monthInput = document.getElementById('reportMonthInput');
-                if(!monthInput.value) {
+                // 預設填入當前月份的第一天到今天
+                const startDateInput = document.getElementById('reportStartDate');
+                const endDateInput = document.getElementById('reportEndDate');
+                if(!startDateInput.value || !endDateInput.value) {
                     const now = new Date();
                     const y = now.getFullYear();
                     const m = String(now.getMonth() + 1).padStart(2, '0');
-                    monthInput.value = `${y}-${m}`;
+                    const d = String(now.getDate()).padStart(2, '0');
+                    startDateInput.value = `${y}-${m}-01`;
+                    endDateInput.value = `${y}-${m}-${d}`;
                 }
                 
                 // 自動幫使用者點擊產生報表，減少手動操作
@@ -1270,14 +1276,22 @@
         const btnGenerateReport = document.getElementById('btnGenerateReport');
         if(btnGenerateReport) {
             btnGenerateReport.addEventListener('click', async () => {
-                const monthVal = document.getElementById('reportMonthInput').value;
-                if(!monthVal) { 
-                    showToast('請先選擇要查詢的月份', 'error'); 
+                const startDateVal = document.getElementById('reportStartDate').value;
+                const endDateVal = document.getElementById('reportEndDate').value;
+                
+                if(!startDateVal || !endDateVal) { 
+                    showToast('請先選擇完整的查詢區間（開始與結束日期）', 'error'); 
                     return; 
                 }
 
-                document.getElementById('reportMonthDisplay1').textContent = monthVal;
-                document.getElementById('reportMonthDisplay2').textContent = monthVal;
+                if(new Date(startDateVal) > new Date(endDateVal)) {
+                    showToast('開始日期不能大於結束日期', 'error');
+                    return;
+                }
+
+                const dateRangeText = `${startDateVal} ~ ${endDateVal}`;
+                document.getElementById('reportMonthDisplay1').textContent = dateRangeText;
+                document.getElementById('reportMonthDisplay2').textContent = dateRangeText;
 
                 const classTbody = document.getElementById('classReportTableBody');
                 const bookTbody = document.getElementById('bookReportTableBody');
@@ -1291,17 +1305,15 @@
                     const logs = [];
                     querySnapshot.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
 
-                    // 過濾出符合所選月份的紀錄 (修正時區問題，避免漏讀資料)
+                    // 過濾出符合所選區間的紀錄
+                    // 為了確保包含結束日期的整天，將結束時間設為 23:59:59
+                    const start = new Date(startDateVal + 'T00:00:00');
+                    const end = new Date(endDateVal + 'T23:59:59'); 
+                    
                     const filteredLogs = logs.filter(log => {
                         if(!log.borrowTime) return false;
-                        
-                        // 轉換為本地時間後比對年月，避免 UTC 造成跨日抓不到資料
                         const logDate = new Date(log.borrowTime);
-                        const logY = logDate.getFullYear();
-                        const logM = String(logDate.getMonth() + 1).padStart(2, '0');
-                        const logMonthStr = `${logY}-${logM}`;
-                        
-                        return logMonthStr === monthVal;
+                        return logDate >= start && logDate <= end;
                     });
 
                     // 1. 班級借閱統計
